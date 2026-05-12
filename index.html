@@ -22,7 +22,7 @@
         th, td { padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center; }
         th { background: #f8fafc; }
         .badge { display: inline-block; padding: 4px 8px; background: #dbeafe; color: #1e40af; border-radius: 4px; font-weight: bold; margin-bottom: 10px; }
-        .func-text { font-family: 'Courier New', Courier, monospace; font-size: 1.1rem; color: #2563eb; font-weight: bold; }
+        .func-text { font-family: 'Courier New', Courier, monospace; font-size: 1.2rem; color: #2563eb; font-weight: bold; padding: 5px 0; }
     </style>
 </head>
 <body>
@@ -64,12 +64,12 @@
             <input type="number" id="c" placeholder="terme c">
         </div>
 
-        <button onclick="executarCalcul()">Resoldre Exercici</button>
+        <button onclick="executarCalcul()">Resoldre i Dibuixar</button>
     </div>
 
     <div class="results-wrapper" id="output" style="display:none;">
         <div class="card">
-            <h3>📝 Anàlisi</h3>
+            <h3>📝 Anàlisi de la Gràfica</h3>
             <div id="infoResum"></div>
             <h4>📌 Taula de Valors</h4>
             <table id="valTable">
@@ -100,10 +100,17 @@ function toggleInputs() {
 function formatEquacio(a, b, c, isQuad) {
     if (!isQuad) {
         let m = a, n = b;
-        let res = "y = " + (m === 1 ? "x" : m === -1 ? "-x" : m === 0 ? "" : m.toFixed(2) + "x");
-        if (n > 0) res += (m === 0 ? "" : " + ") + n.toFixed(2);
-        else if (n < 0) res += " - " + Math.abs(n).toFixed(2);
-        return res === "y = " ? "y = 0" : res;
+        if (m === 0 && n === 0) return "y = 0";
+        let res = "y = ";
+        if (m !== 0) {
+            res += (m === 1 ? "x" : m === -1 ? "-x" : m.toFixed(2) + "x");
+        }
+        if (n !== 0) {
+            if (m !== 0) res += (n > 0 ? " + " : " - ");
+            else if (n < 0) res += "-";
+            res += Math.abs(n).toFixed(2);
+        }
+        return res;
     } else {
         let res = "y = " + (a === 1 ? "x²" : a === -1 ? "-x²" : a.toFixed(2) + "x²");
         if (b !== 0) {
@@ -118,8 +125,9 @@ function formatEquacio(a, b, c, isQuad) {
 
 function executarCalcul() {
     const type = document.getElementById('funcType').value;
-    let xCoords = [];
-    let formula, info, equacioLabel;
+    let formula, equacioLabel, badgeLabel;
+    let puntsClau = [];
+    let dadesExtra = "";
 
     if (type === 'lineal') {
         let m, n;
@@ -133,65 +141,65 @@ function executarCalcul() {
             m = (y2 - y1) / (x2 - x1);
             n = y1 - (m * x1);
         }
-        
-        equacioLabel = formatEquacio(m, n, 0, false);
-        const tallX = m !== 0 ? -n/m : null;
-        
-        info = `
-            <span class="badge">Lineal</span><br>
-            <div class="func-text">${equacioLabel}</div><br>
-            <b>Pendent (m):</b> ${m.toFixed(2)}<br>
-            <b>Ordenada (n):</b> ${n.toFixed(2)}<br>
-            <b>Tall Eix X:</b> ${tallX !== null ? `(${tallX.toFixed(2)}, 0)` : 'No en té'}<br>
-            <b>Tall Eix Y:</b> (0, ${n.toFixed(2)})<br>
-            <b>Domini:</b> ℝ | <b>Recorregut:</b> ℝ
-        `;
-        
         formula = x => m*x + n;
-        xCoords = tallX !== null ? [tallX - 2, tallX - 1, tallX, tallX + 1, tallX + 2] : [-2, -1, 0, 1, 2];
+        equacioLabel = formatEquacio(m, n, 0, false);
+        badgeLabel = "Lineal";
+        
+        const tallX = m !== 0 ? -n/m : 0;
+        puntsClau = [tallX - 2, tallX - 1, tallX, tallX + 1, tallX + 2];
+        dadesExtra = `<b>Tall Eix X:</b> (${tallX.toFixed(2)}, 0)<br><b>Tall Eix Y:</b> (0, ${n.toFixed(2)})`;
 
     } else {
         const a = parseFloat(document.getElementById('a').value) || 0;
         const b = parseFloat(document.getElementById('b').value) || 0;
         const c = parseFloat(document.getElementById('c').value) || 0;
         if (a === 0) return alert("En una quadràtica, 'a' no pot ser 0.");
-
+        
+        formula = x => a*x**2 + b*x + c;
         equacioLabel = formatEquacio(a, b, c, true);
-        const vx = -b / (2 * a), vy = a*(vx**2) + b*vx + c;
-        const disc = b*b - 4*a*c;
-        let tallsXText = "No en té";
-        let tallsXPunts = [];
+        badgeLabel = "Quadràtica";
 
+        const vx = -b / (2 * a), vy = formula(vx);
+        const disc = b*b - 4*a*c;
+        puntsClau = [vx - 2, vx - 1, vx, vx + 1, vx + 2];
+        let tallsXText = "No en té";
         if (disc >= 0) {
             const x1 = (-b + Math.sqrt(disc)) / (2*a);
             const x2 = (-b - Math.sqrt(disc)) / (2*a);
-            tallsXPunts = disc === 0 ? [x1] : [x1, x2];
-            tallsXText = tallsXPunts.map(x => `(${x.toFixed(2)}, 0)`).join(", ");
+            puntsClau.push(x1, x2);
+            tallsXText = disc === 0 ? `(${x1.toFixed(2)}, 0)` : `(${x1.toFixed(2)}, 0) i (${x2.toFixed(2)}, 0)`;
         }
-
-        info = `
-            <span class="badge">Quadràtica</span><br>
-            <div class="func-text">${equacioLabel}</div><br>
-            <b>Vèrtex:</b> (${vx.toFixed(2)}, ${vy.toFixed(2)}) (${a > 0 ? 'Mínim' : 'Màxim'})<br>
-            <b>Tall Eix X:</b> ${tallsXText}<br>
-            <b>Tall Eix Y:</b> (0, ${c.toFixed(2)})<br>
-            <b>Domini:</b> ℝ<br>
-            <b>Recorregut:</b> ${a > 0 ? `[${vy.toFixed(2)}, +∞)` : `(-∞, ${vy.toFixed(2)}]`}
-        `;
-        
-        formula = x => a*x**2 + b*x + c;
-        xCoords = [vx - 2, vx - 1, vx, vx + 1, vx + 2, ...tallsXPunts];
+        dadesExtra = `<b>Vèrtex:</b> (${vx.toFixed(2)}, ${vy.toFixed(2)})<br><b>Tall Eix X:</b> ${tallsXText}<br><b>Tall Eix Y:</b> (0, ${c.toFixed(2)})`;
     }
 
-    dibuixar([...new Set(xCoords)].sort((a,b)=>a-b), formula, info);
+    // Netejar i ordenar valors de X
+    const xVals = [...new Set(puntsClau)].sort((a,b) => a-b);
+    const yVals = xVals.map(x => formula(x));
+    
+    // Càlcul Domini i Recorregut basat EN LA TAULA
+    const dominiMin = Math.min(...xVals).toFixed(2);
+    const dominiMax = Math.max(...xVals).toFixed(2);
+    const recMin = Math.min(...yVals).toFixed(2);
+    const recMax = Math.max(...yVals).toFixed(2);
+
+    const infoHTML = `
+        <span class="badge">${badgeLabel}</span><br>
+        <div class="func-text">${equacioLabel}</div><br>
+        ${dadesExtra}<br>
+        <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
+        <b>Domini (en gràfica):</b> [${dominiMin}, ${dominiMax}]<br>
+        <b>Recorregut (en gràfica):</b> [${recMin}, ${recMax}]
+    `;
+
+    mostrarResultats(xVals, yVals, infoHTML);
 }
 
-function dibuixar(xVals, formula, info) {
-    const dataY = xVals.map(x => formula(x));
+function mostrarResultats(xVals, yVals, info) {
     document.getElementById('infoResum').innerHTML = info;
     document.getElementById('output').style.display = 'grid';
+    
     const tbody = document.querySelector('#valTable tbody');
-    tbody.innerHTML = xVals.map((x, i) => `<tr><td>${x.toFixed(1)}</td><td>${dataY[i].toFixed(2)}</td></tr>`).join('');
+    tbody.innerHTML = xVals.map((x, i) => `<tr><td>${x.toFixed(2)}</td><td>${yVals[i].toFixed(2)}</td></tr>`).join('');
 
     const ctx = document.getElementById('myChart').getContext('2d');
     if (myChart) myChart.destroy();
@@ -199,11 +207,27 @@ function dibuixar(xVals, formula, info) {
         type: 'line',
         data: {
             labels: xVals.map(x => x.toFixed(1)),
-            datasets: [{ label: 'f(x)', data: dataY, borderColor: '#2563eb', tension: 0.3, fill: false }]
+            datasets: [{
+                label: 'f(x)',
+                data: yVals,
+                borderColor: '#2563eb',
+                tension: 0.3,
+                fill: false,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { title: { display: true, text: 'Eix X' } },
+                y: { title: { display: true, text: 'Eix Y' } }
+            }
+        }
     });
 }
+
 toggleInputs();
 </script>
 </body>

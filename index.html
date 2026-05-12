@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathSolver Expert - 3r ESO</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary: #2563eb; --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; }
+        .container { max-width: 900px; margin: auto; }
+        .card { background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .grid-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 15px; }
+        .input-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 0.85rem; font-weight: 600; color: #64748b; }
+        input, select { padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 1rem; }
+        button { background: var(--primary); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 20px; transition: 0.2s; }
+        button:hover { background: #1d4ed8; }
+        .results-wrapper { display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; }
+        @media (max-width: 800px) { .results-wrapper { grid-template-columns: 1fr; } }
+        .chart-container { height: 350px; position: relative; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center; }
+        th { background: #f8fafc; }
+        .badge { display: inline-block; padding: 4px 8px; background: #dbeafe; color: #1e40af; border-radius: 4px; font-weight: bold; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📐 Generador de Funcions 3r ESO</h2>
+    
+    <div class="card">
+        <div class="grid-inputs">
+            <div class="input-group">
+                <label>Tipus de funció</label>
+                <select id="funcType" onchange="toggleInputs()">
+                    <option value="lineal">Lineal (y = mx + n)</option>
+                    <option value="quadratica">Quadràtica (ax² + bx + c)</option>
+                </select>
+            </div>
+            <div id="linealSubtype" class="input-group">
+                <label>Dades inicials</label>
+                <select id="linealMode" onchange="toggleInputs()">
+                    <option value="mn">M i N directes</option>
+                    <option value="punts">Càlcul per 2 punts</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="inputsMN" class="grid-inputs">
+            <input type="number" id="m" placeholder="m (pendent)">
+            <input type="number" id="n" placeholder="n (ordenada)">
+        </div>
+
+        <div id="inputsPunts" class="grid-inputs" style="display:none;">
+            <input type="number" id="x1" placeholder="x1"> <input type="number" id="y1" placeholder="y1">
+            <input type="number" id="x2" placeholder="x2"> <input type="number" id="y2" placeholder="y2">
+        </div>
+
+        <div id="inputsQuad" class="grid-inputs" style="display:none;">
+            <input type="number" id="a" placeholder="a (x²)">
+            <input type="number" id="b" placeholder="b (x)">
+            <input type="number" id="c" placeholder="terme c">
+        </div>
+
+        <button onclick="executarCàlcul()">Resoldre Exercici</button>
+    </div>
+
+    <div class="results-wrapper" id="output" style="display:none;">
+        <div class="card">
+            <h3>📝 Anàlisi</h3>
+            <div id="infoResum"></div>
+            <h4>📌 Taula de Valors</h4>
+            <table id="valTable">
+                <thead><tr><th>x</th><th>f(x)</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div class="card">
+            <div class="chart-container">
+                <canvas id="myChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let myChart = null;
+
+function toggleInputs() {
+    const type = document.getElementById('funcType').value;
+    const mode = document.getElementById('linealMode').value;
+    
+    document.getElementById('linealSubtype').style.display = type === 'lineal' ? 'flex' : 'none';
+    document.getElementById('inputsMN').style.display = (type === 'lineal' && mode === 'mn') ? 'grid' : 'none';
+    document.getElementById('inputsPunts').style.display = (type === 'lineal' && mode === 'punts') ? 'grid' : 'none';
+    document.getElementById('inputsQuad').style.display = type === 'quadratica' ? 'grid' : 'none';
+}
+
+function executarCàlcul() {
+    const type = document.getElementById('funcType').value;
+    let a, b, c, m, n;
+    let puntsX = [];
+
+    if (type === 'lineal') {
+        const mode = document.getElementById('linealMode').value;
+        if (mode === 'mn') {
+            m = parseFloat(document.getElementById('m').value) || 0;
+            n = parseFloat(document.getElementById('n').value) || 0;
+        } else {
+            const x1 = parseFloat(document.getElementById('x1').value);
+            const y1 = parseFloat(document.getElementById('y1').value);
+            const x2 = parseFloat(document.getElementById('x2').value);
+            const y2 = parseFloat(document.getElementById('y2').value);
+            if (x1 === x2) return alert("x1 i x2 no poden ser iguals");
+            m = (y2 - y1) / (x2 - x1);
+            n = y1 - (m * x1);
+        }
+        mostrarResultatsLineal(m, n);
+    } else {
+        a = parseFloat(document.getElementById('a').value) || 0;
+        b = parseFloat(document.getElementById('b').value) || 0;
+        c = parseFloat(document.getElementById('c').value) || 0;
+        if (a === 0) return alert("El terme 'a' no pot ser 0 en una quadràtica");
+        mostrarResultatsQuad(a, b, c);
+    }
+}
+
+function mostrarResultatsLineal(m, n) {
+    const tallX = m !== 0 ? -n/m : "No en té";
+    const info = `
+        <span class="badge">Lineal</span><br>
+        <b>Equació:</b> y = ${m.toFixed(2)}x + ${n.toFixed(2)}<br>
+        <b>Pendent (m):</b> ${m.toFixed(2)}<br>
+        <b>Ordenada (n):</b> ${n.toFixed(2)}<br>
+        <b>Tall Eix X:</b> (${typeof tallX === 'number' ? tallX.toFixed(2) : tallX}, 0)<br>
+        <b>Tall Eix Y:</b> (0, ${n.toFixed(2)})<br>
+        <b>Domini/Rec:</b> ℝ / ℝ
+    `;
+    
+    let xCoords = [];
+    if (typeof tallX === 'number') xCoords.push(tallX - 2, tallX, tallX + 2);
+    else xCoords.push(-2, 0, 2);
+    
+    dibuixar(xCoords.sort((a,b)=>a-b), x => m*x + n, info);
+}
+
+function mostrarResultatsQuad(a, b, c) {
+    const vx = -b / (2 * a);
+    const vy = a*(vx**2) + b*vx + c;
+    const discriminant = b*b - 4*a*c;
+    let tallsX = [];
+    
+    if (discriminant > 0) {
+        tallsX.push((-b + Math.sqrt(discriminant))/(2*a));
+        tallsX.push((-b - Math.sqrt(discriminant))/(2*a));
+    } else if (discriminant === 0) {
+        tallsX.push(-b/(2*a));
+    }
+
+    const info = `
+        <span class="badge">Quadràtica</span><br>
+        <b>Vèrtex:</b> (${vx.toFixed(2)}, ${vy.toFixed(2)})<br>
+        <b>Extrem:</b> ${a > 0 ? 'Mínim' : 'Màxim'}<br>
+        <b>Tall Eix Y:</b> (0, ${c.toFixed(2)})<br>
+        <b>Recorregut:</b> ${a > 0 ? `[${vy.toFixed(2)}, +∞)` : `(-∞, ${vy.toFixed(2)}]`}
+    `;
+
+    let xCoords = [vx - 2, vx - 1, vx, vx + 1, vx + 2, ...tallsX];
+    dibuixar([...new Set(xCoords)].sort((a,b)=>a-b), x => a*x**2 + b*x + c, info);
+}
+
+function dibuixar(xVals, formula, info) {
+    const dataY = xVals.map(x => formula(x));
+    const labelsX = xVals.map(x => x.toFixed(1));
+
+    document.getElementById('infoResum').innerHTML = info;
+    document.getElementById('output').style.display = 'grid';
+
+    // Taula
+    const tbody = document.querySelector('#valTable tbody');
+    tbody.innerHTML = xVals.map((x, i) => `<tr><td>${x.toFixed(1)}</td><td>${dataY[i].toFixed(2)}</td></tr>`).join('');
+
+    // Gràfica segura
+    const ctx = document.getElementById('myChart').getContext('2d');
+    if (myChart) myChart.destroy();
+    
+    myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labelsX,
+            datasets: [{
+                label: 'f(x)',
+                data: dataY,
+                borderColor: '#2563eb',
+                borderWidth: 3,
+                pointBackgroundColor: '#2563eb',
+                tension: 0.4,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: false, grid: { color: '#e2e8f0' } },
+                x: { grid: { color: '#e2e8f0' } }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+// Inicialització
+toggleInputs();
+</script>
+</body>
+</html>

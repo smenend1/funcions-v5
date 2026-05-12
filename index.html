@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MathSolver Expert - 3r ESO</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3468/3468165.png">
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #2563eb; --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; }
@@ -15,6 +20,7 @@
         label { font-size: 0.85rem; font-weight: 600; color: #64748b; }
         input, select { padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 1rem; }
         button { background: var(--primary); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 20px; transition: 0.2s; }
+        button:active { transform: scale(0.98); }
         .results-wrapper { display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; }
         @media (max-width: 800px) { .results-wrapper { grid-template-columns: 1fr; } }
         .chart-container { height: 350px; position: relative; }
@@ -28,7 +34,7 @@
 <body>
 
 <div class="container">
-    <h2>📐 Generador de Funcions 3r ESO</h2>
+    <h2>📐 MathSolver PWA - 3r ESO</h2>
     
     <div class="card">
         <div class="grid-inputs">
@@ -72,10 +78,12 @@
             <h3>📝 Anàlisi de la Gràfica</h3>
             <div id="infoResum"></div>
             <h4>📌 Taula de Valors</h4>
-            <table id="valTable">
-                <thead><tr><th>x</th><th>f(x)</th></tr></thead>
-                <tbody></tbody>
-            </table>
+            <div style="overflow-x:auto;">
+                <table id="valTable">
+                    <thead><tr><th>x</th><th>f(x)</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
         </div>
         <div class="card">
             <div class="chart-container">
@@ -86,6 +94,15 @@
 </div>
 
 <script>
+// --- REGISTRE DEL SERVICE WORKER PER A INSTAL·LACIÓ PWA ---
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js')
+            .then(reg => console.log('Service Worker registrat amb èxit'))
+            .catch(err => console.log('Error al registrar el Service Worker', err));
+    });
+}
+
 let myChart = null;
 
 function toggleInputs() {
@@ -144,7 +161,6 @@ function executarCalcul() {
         formula = x => m*x + n;
         equacioLabel = formatEquacio(m, n, 0, false);
         badgeLabel = "Lineal";
-        
         const tallX = m !== 0 ? -n/m : 0;
         puntsClau = [tallX - 2, tallX - 1, tallX, tallX + 1, tallX + 2];
         dadesExtra = `<b>Tall Eix X:</b> (${tallX.toFixed(2)}, 0)<br><b>Tall Eix Y:</b> (0, ${n.toFixed(2)})`;
@@ -158,7 +174,6 @@ function executarCalcul() {
         formula = x => a*x**2 + b*x + c;
         equacioLabel = formatEquacio(a, b, c, true);
         badgeLabel = "Quadràtica";
-
         const vx = -b / (2 * a), vy = formula(vx);
         const disc = b*b - 4*a*c;
         puntsClau = [vx - 2, vx - 1, vx, vx + 1, vx + 2];
@@ -172,11 +187,9 @@ function executarCalcul() {
         dadesExtra = `<b>Vèrtex:</b> (${vx.toFixed(2)}, ${vy.toFixed(2)})<br><b>Tall Eix X:</b> ${tallsXText}<br><b>Tall Eix Y:</b> (0, ${c.toFixed(2)})`;
     }
 
-    // Netejar i ordenar valors de X
     const xVals = [...new Set(puntsClau)].sort((a,b) => a-b);
     const yVals = xVals.map(x => formula(x));
     
-    // Càlcul Domini i Recorregut basat EN LA TAULA
     const dominiMin = Math.min(...xVals).toFixed(2);
     const dominiMax = Math.max(...xVals).toFixed(2);
     const recMin = Math.min(...yVals).toFixed(2);
@@ -197,7 +210,6 @@ function executarCalcul() {
 function mostrarResultats(xVals, yVals, info) {
     document.getElementById('infoResum').innerHTML = info;
     document.getElementById('output').style.display = 'grid';
-    
     const tbody = document.querySelector('#valTable tbody');
     tbody.innerHTML = xVals.map((x, i) => `<tr><td>${x.toFixed(2)}</td><td>${yVals[i].toFixed(2)}</td></tr>`).join('');
 
@@ -211,23 +223,24 @@ function mostrarResultats(xVals, yVals, info) {
                 label: 'f(x)',
                 data: yVals,
                 borderColor: '#2563eb',
+                borderWidth: 3,
                 tension: 0.3,
                 fill: false,
-                pointRadius: 5,
-                pointHoverRadius: 7
+                pointBackgroundColor: '#2563eb',
+                pointRadius: 4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
             scales: {
-                x: { title: { display: true, text: 'Eix X' } },
-                y: { title: { display: true, text: 'Eix Y' } }
+                y: { grid: { color: '#e2e8f0' } },
+                x: { grid: { color: '#e2e8f0' } }
             }
         }
     });
 }
-
 toggleInputs();
 </script>
 </body>
